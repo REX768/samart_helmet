@@ -268,6 +268,153 @@ app.get('/api/workers/info', (req, res) => {
 });
 
 // ========================================
+// HTTP Polling Endpoints (لصفحة العامل)
+// ========================================
+
+// تسجيل عامل جديد عبر HTTP (بدلاً من Socket.IO)
+app.post('/api/worker/register', (req, res) => {
+    const { workerId, name, phone, emergencyPhone, address } = req.body;
+
+    if (!workerId || !name) {
+        return res.status(400).json({ error: 'workerId و name مطلوبان' });
+    }
+
+    const workerInfo = {
+        workerId,
+        name,
+        phone: phone || null,
+        emergencyPhone: emergencyPhone || null,
+        address: address || null,
+        registeredAt: new Date().toISOString()
+    };
+
+    workersInfo.set(workerId, workerInfo);
+    saveWorkersData();
+
+    // تحديث بيانات العامل
+    let workerData = workersData.get(workerId) || {};
+    workerData = {
+        ...workerData,
+        workerId,
+        name,
+        phone,
+        emergencyPhone,
+        address,
+        phoneConnected: true,
+        phoneLastUpdate: new Date().toISOString(),
+        lastUpdate: new Date().toISOString()
+    };
+    workersData.set(workerId, workerData);
+
+    // إرسال إلى لوحة التحكم
+    io.to('dashboard').emit('sensor-update', workerData);
+
+    console.log(`تم تسجيل العامل عبر HTTP: ${name} (${workerId})`);
+
+    res.json({
+        success: true,
+        message: 'تم تسجيل العامل بنجاح',
+        worker: workerInfo
+    });
+});
+
+// إرسال الموقع من الهاتف عبر HTTP (بدلاً من Socket.IO)
+app.post('/api/worker/location', (req, res) => {
+    const { workerId, latitude, longitude, accuracy, timestamp, source } = req.body;
+
+    if (!workerId || latitude === undefined || longitude === undefined) {
+        return res.status(400).json({ error: 'workerId, latitude, longitude مطلوبة' });
+    }
+
+    console.log(`موقع العامل ${workerId}: ${latitude}, ${longitude} (دقة: ${accuracy}م)`);
+
+    // تحديث بيانات العامل
+    let workerData = workersData.get(workerId) || {};
+    const workerInfo = workersInfo.get(workerId) || {};
+
+    workerData = {
+        ...workerData,
+        workerId,
+        name: workerInfo.name || workerData.name,
+        phone: workerInfo.phone || workerData.phone,
+        emergencyPhone: workerInfo.emergencyPhone || workerData.emergencyPhone,
+        address: workerInfo.address || workerData.address,
+        latitude,
+        longitude,
+        gpsAccuracy: accuracy,
+        gpsSource: source || 'phone-gps',
+        phoneConnected: true,
+        phoneLastUpdate: new Date(timestamp || Date.now()).toISOString(),
+        lastUpdate: new Date().toISOString()
+    };
+
+    workersData.set(workerId, workerData);
+
+    // إرسال إلى لوحة التحكم
+    io.to('dashboard').emit('location-update', {
+        workerId,
+        latitude,
+        longitude,
+        accuracy,
+        timestamp: timestamp || Date.now()
+    });
+
+    io.to('dashboard').emit('sensor-update', workerData);
+
+    res.json({
+        success: true,
+        message: 'تم استلام الموقع بنجاح'
+    });
+});
+
+// Heartbeat من الهاتف عبر HTTP
+app.post('/api/worker/heartbeat', (req, res) => {
+    const { workerId, timestamp } = req.body;
+
+    if (!workerId) {
+        return res.status(400).json({ error: 'workerId مطلوب' });
+    }
+
+    // تحديث حالة الاتصال
+    let workerData = workersData.get(workerId);
+    if (workerData) {
+        workerData.phoneConnected = true;
+        workerData.phoneLastHeartbeat = new Date(timestamp || Date.now()).toISOString();
+        workersData.set(workerId, workerData);
+    }
+
+    res.json({
+        success: true,
+        message: 'تم استلام heartbeat'
+    });
+});
+
+// قطع الاتصال من الهاتف
+app.post('/api/worker/disconnect', (req, res) => {
+    const { workerId } = req.body;
+
+    if (!workerId) {
+        return res.status(400).json({ error: 'workerId مطلوب' });
+    }
+
+    console.log(`هاتف العامل ${workerId} قطع الاتصال`);
+
+    let workerData = workersData.get(workerId);
+    if (workerData) {
+        workerData.phoneConnected = false;
+        workersData.set(workerId, workerData);
+        io.to('dashboard').emit('sensor-update', workerData);
+    }
+
+    io.to('dashboard').emit('phone-disconnected', { workerId });
+
+    res.json({
+        success: true,
+        message: 'تم قطع الاتصال'
+    });
+});
+
+// ========================================
 // WebSocket Handling
 // ========================================
 

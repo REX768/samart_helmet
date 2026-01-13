@@ -2,16 +2,17 @@
 // Smart Helmet - Dashboard Application
 // ========================================
 
-// Socket.IO Connection with dashboard type
-const socket = io({
-    query: {
-        type: 'dashboard'
-    }
-});
+// HTTP Polling Configuration (يعمل على Vercel)
+const CONFIG = {
+    POLLING_INTERVAL: 2000,  // تحديث كل 2 ثانية
+    SERVER_URL: window.location.origin
+};
 
 // Data Storage
 let workersData = new Map();
 let alertsCount = 0;
+let isConnected = false;
+let pollingTimer = null;
 
 // DOM Elements
 const elements = {
@@ -63,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSearch();
     initializeViewToggle();
     initializeModal();
+    
+    // بدء HTTP Polling بدلاً من Socket.IO
+    startPolling();
     updateDisplay();
 });
 
@@ -247,44 +251,82 @@ style.textContent = `
 document.head.appendChild(style);
 
 // ========================================
-// Socket.IO Events
+// HTTP Polling (بدلاً من Socket.IO)
 // ========================================
-socket.on('connect', () => {
+
+// بدء Polling
+function startPolling() {
+    // جلب البيانات فوراً
+    fetchWorkersData();
+    
+    // ثم جلب البيانات بشكل دوري
+    pollingTimer = setInterval(() => {
+        fetchWorkersData();
+    }, CONFIG.POLLING_INTERVAL);
+    
     updateConnectionStatus(true);
     showToast('success', 'تم الاتصال', 'تم الاتصال بالخادم بنجاح');
-    console.log('Connected to server');
-});
+    console.log('Started HTTP polling');
+}
 
-socket.on('disconnect', () => {
+// إيقاف Polling
+function stopPolling() {
+    if (pollingTimer) {
+        clearInterval(pollingTimer);
+        pollingTimer = null;
+    }
     updateConnectionStatus(false);
-    showToast('error', 'انقطع الاتصال', 'فقدان الاتصال بالخادم');
-    console.log('Disconnected from server');
-});
+}
 
-socket.on('initial-data', (data) => {
-    console.log('Initial data received:', data);
-    data.forEach(worker => {
-        workersData.set(worker.workerId, worker);
-    });
-    updateDisplay();
-});
-
-socket.on('sensor-update', (workerData) => {
-    console.log('Sensor update:', workerData);
-    workersData.set(workerData.workerId, workerData);
-    updateDisplay();
-
-    // Check for alerts
-    if (workerData.alerts && workerData.alerts.length > 0) {
-        handleAlerts(workerData);
+// جلب بيانات العاملين من السيرفر
+async function fetchWorkersData() {
+    try {
+        const response = await fetch(`${CONFIG.SERVER_URL}/api/workers`);
+        
+        if (!response.ok) {
+            throw new Error('فشل جلب البيانات');
+        }
+        
+        const data = await response.json();
+        
+        // حفظ البيانات السابقة للتحقق من التغييرات
+        const previousData = new Map(workersData);
+        
+        // تحديث البيانات
+        data.forEach(worker => {
+            const workerId = worker.workerId;
+            const previousWorker = previousData.get(workerId);
+            
+            // حفظ البيانات الجديدة
+            workersData.set(workerId, worker);
+            
+            // التحقق من التنبيهات الجديدة
+            if (worker.alerts && worker.alerts.length > 0) {
+                // التحقق إذا كانت التنبيهات جديدة
+                if (!previousWorker || JSON.stringify(previousWorker.alerts) !== JSON.stringify(worker.alerts)) {
+                    handleAlerts(worker);
+                }
+            }
+            
+            // التحقق من السقوط
+            if (worker.fallDetected && (!previousWorker || !previousWorker.fallDetected)) {
+                showToast('error', 'تنبيه سقوط!', `تم اكتشاف سقوط للعامل #${workerId}`);
+                showEmergencyModal(worker);
+            }
+        });
+        
+        // تحديث العرض
+        updateDisplay();
+        
+        isConnected = true;
+        updateConnectionStatus(true);
+        
+    } catch (error) {
+        console.error('خطأ في جلب البيانات:', error);
+        isConnected = false;
+        updateConnectionStatus(false);
     }
-
-    // Check for fall detection
-    if (workerData.fallDetected) {
-        showToast('error', 'تنبيه سقوط!', `تم اكتشاف سقوط للعامل #${workerData.workerId}`);
-        showEmergencyModal(workerData);
-    }
-});
+}
 
 // ========================================
 // Connection Status
@@ -300,6 +342,17 @@ function updateConnectionStatus(connected) {
         elements.connectionText.textContent = 'غير متصل';
     }
 }
+
+// إعادة المحاولة عند فقدان الاتصال
+function retryConnection() {
+    if (!isConnected) {
+        console.log('إعادة محاولة الاتصال...');
+        fetchWorkersData();
+    }
+}
+
+// إعادة المحاولة كل 5 ثوانٍ إذا كان الاتصال منقطعاً
+setInterval(retryConnection, 5000);
 
 // ========================================
 // Display Update

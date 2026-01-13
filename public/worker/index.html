@@ -685,9 +685,6 @@
         </div>
     </div>
 
-    <!-- Socket.IO -->
-    <script src="/socket.io/socket.io.js"></script>
-
     <script>
         // ========================================
         // Worker Location Tracking App
@@ -705,14 +702,14 @@
 
         // State
         let state = {
-            socket: null,
             watchId: null,
             workerData: null,
             lastPosition: null,
             lastSendTime: null,
             updateCount: 0,
             isConnected: false,
-            heartbeatTimer: null
+            heartbeatTimer: null,
+            serverURL: window.location.origin // استخدام نفس النطاق
         };
 
         // DOM Elements
@@ -894,51 +891,43 @@
         }
 
         // ========================================
-        // Connect to Server
+        // Connect to Server (HTTP Polling)
         // ========================================
-        function connectToServer() {
-            state.socket = io({
-                query: {
-                    type: 'worker',
-                    workerId: state.workerData.helmetId
-                }
-            });
-
-            state.socket.on('connect', () => {
-                state.isConnected = true;
-                updateConnectionStatus(true);
-                addActivity('success', 'fa-plug', 'تم الاتصال بالسيرفر');
-
-                // Send worker registration
-                state.socket.emit('worker-register', {
-                    workerId: state.workerData.helmetId,
-                    name: state.workerData.name,
-                    phone: state.workerData.phone,
-                    emergencyPhone: state.workerData.emergencyPhone,
-                    address: state.workerData.address
+        async function connectToServer() {
+            try {
+                // تسجيل العامل عبر HTTP
+                const response = await fetch(`${state.serverURL}/api/worker/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        workerId: state.workerData.helmetId,
+                        name: state.workerData.name,
+                        phone: state.workerData.phone,
+                        emergencyPhone: state.workerData.emergencyPhone,
+                        address: state.workerData.address
+                    })
                 });
 
-                // Start heartbeat
-                startHeartbeat();
-            });
+                if (response.ok) {
+                    const data = await response.json();
+                    state.isConnected = true;
+                    updateConnectionStatus(true);
+                    addActivity('success', 'fa-plug', 'تم الاتصال بالسيرفر');
+                    console.log('تم تسجيل العامل:', data);
 
-            state.socket.on('disconnect', () => {
+                    // بدء heartbeat
+                    startHeartbeat();
+                } else {
+                    throw new Error('فشل تسجيل العامل');
+                }
+            } catch (error) {
                 state.isConnected = false;
                 updateConnectionStatus(false);
-                addActivity('danger', 'fa-plug', 'انقطع الاتصال بالسيرفر');
-                stopHeartbeat();
-            });
-
-            state.socket.on('connect_error', () => {
-                state.isConnected = false;
-                updateConnectionStatus(false);
-                addActivity('danger', 'fa-exclamation-circle', 'خطأ في الاتصال');
-            });
-
-            // Confirmation from server
-            state.socket.on('location-received', () => {
-                addActivity('info', 'fa-check', 'تم استلام الموقع');
-            });
+                addActivity('danger', 'fa-exclamation-circle', 'خطأ في الاتصال: ' + error.message);
+                console.error('خطأ في الاتصال:', error);
+            }
         }
 
         // ========================================
@@ -1024,46 +1013,78 @@
         }
 
         // ========================================
-        // Send Location Update
+        // Send Location Update (HTTP)
         // ========================================
-        function sendLocationUpdate(lat, lng, accuracy, timestamp) {
+        async function sendLocationUpdate(lat, lng, accuracy, timestamp) {
             if (!state.isConnected) {
                 addActivity('warning', 'fa-exclamation-triangle', 'فشل الإرسال - غير متصل');
                 return;
             }
 
-            const locationData = {
-                workerId: state.workerData.helmetId,
-                latitude: lat,
-                longitude: lng,
-                accuracy: accuracy,
-                timestamp: timestamp,
-                source: 'phone-gps'
-            };
+            try {
+                const response = await fetch(`${state.serverURL}/api/worker/location`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        workerId: state.workerData.helmetId,
+                        latitude: lat,
+                        longitude: lng,
+                        accuracy: accuracy,
+                        timestamp: timestamp,
+                        source: 'phone-gps'
+                    })
+                });
 
-            state.socket.emit('worker-location', locationData);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Update state
+                    state.lastSendTime = timestamp;
+                    state.updateCount++;
 
-            // Update state
-            state.lastSendTime = timestamp;
-            state.updateCount++;
+                    // Update UI
+                    elements.updateCount.textContent = state.updateCount;
+                    updateLastSendTime();
 
-            // Update UI
-            elements.updateCount.textContent = state.updateCount;
-            updateLastSendTime();
-
-            addActivity('success', 'fa-location-arrow', 'تم إرسال الموقع');
+                    addActivity('success', 'fa-location-arrow', 'تم إرسال الموقع');
+                } else {
+                    throw new Error('فشل إرسال الموقع');
+                }
+            } catch (error) {
+                addActivity('danger', 'fa-exclamation-triangle', 'فشل إرسال الموقع: ' + error.message);
+                console.error('خطأ في إرسال الموقع:', error);
+            }
         }
 
         // ========================================
-        // Heartbeat
+        // Heartbeat (HTTP)
         // ========================================
         function startHeartbeat() {
-            state.heartbeatTimer = setInterval(() => {
+            state.heartbeatTimer = setInterval(async () => {
                 if (state.isConnected) {
-                    state.socket.emit('worker-heartbeat', {
-                        workerId: state.workerData.helmetId,
-                        timestamp: Date.now()
-                    });
+                    try {
+                        const response = await fetch(`${state.serverURL}/api/worker/heartbeat`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                workerId: state.workerData.helmetId,
+                                timestamp: Date.now()
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('فشل heartbeat');
+                        }
+                    } catch (error) {
+                        console.error('خطأ في heartbeat:', error);
+                        state.isConnected = false;
+                        updateConnectionStatus(false);
+                        stopHeartbeat();
+                    }
                 }
             }, CONFIG.HEARTBEAT_INTERVAL);
         }
@@ -1181,7 +1202,7 @@
         // ========================================
         // Stop Tracking
         // ========================================
-        function stopTracking() {
+        async function stopTracking() {
             if (confirm('هل تريد إيقاف البث المباشر؟')) {
                 // Stop watching position
                 if (state.watchId) {
@@ -1192,13 +1213,21 @@
                 // Stop heartbeat
                 stopHeartbeat();
 
-                // Disconnect socket
-                if (state.socket) {
-                    state.socket.emit('worker-disconnect', {
-                        workerId: state.workerData.helmetId
-                    });
-                    state.socket.disconnect();
-                    state.socket = null;
+                // Disconnect via HTTP
+                if (state.isConnected) {
+                    try {
+                        await fetch(`${state.serverURL}/api/worker/disconnect`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                workerId: state.workerData.helmetId
+                            })
+                        });
+                    } catch (error) {
+                        console.error('خطأ في قطع الاتصال:', error);
+                    }
                 }
 
                 // Reset state
