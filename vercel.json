@@ -1,0 +1,30 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/(styles\\.css|app\\.js|index\\.html)",
+      "destination": "/api/static.js"
+    },
+    {
+      "source": "/worker/:path*",
+      "destination": "/api/static.js"
+    },
+    {
+      "source": "/",
+      "destination": "/api/index.html.js"
+    },
+    {
+      "source": "/index.html",
+      "destination": "/api/index.html.js"
+    }
+  ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  }
+}
+

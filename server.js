@@ -23,6 +23,24 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // ========================================
+// Helper Functions (from health-monitor-app)
+// ========================================
+
+// دالة لتحويل القيم إلى أرقام بشكل آمن
+function toNumber(value) {
+    const n = typeof value === 'string' ? parseFloat(value) : Number(value);
+    return Number.isFinite(n) ? n : 0;
+}
+
+// دالة لاختيار أول قيمة متاحة من مفاتيح متعددة
+function pickFirst(obj, keys) {
+    for (const k of keys) {
+        if (obj && Object.prototype.hasOwnProperty.call(obj, k)) return obj[k];
+    }
+    return undefined;
+}
+
+// ========================================
 // Data Storage
 // ========================================
 
@@ -81,18 +99,29 @@ loadWorkersData();
 
 // استقبال البيانات من ESP32 (الخوذة)
 app.post('/api/sensor-data', (req, res) => {
-    const {
-        workerId,
-        temperature,
-        humidity,
-        gasLevel,
-        accelX,
-        accelY,
-        accelZ,
-        fallDetected,
-        mpuStatus,
-        timestamp
-    } = req.body;
+    // استخدام pickFirst للتعامل مع اختلافات أسماء الحقول من ESP32
+    const workerIdRaw = pickFirst(req.body, ['workerId', 'worker_id', 'id', 'ID']);
+    const temperatureRaw = pickFirst(req.body, ['temperature', 'temp', 'Temp', 'bodyTemperature', 'bodyTemp']);
+    const humidityRaw = pickFirst(req.body, ['humidity', 'humid', 'Humidity', 'hum']);
+    const gasLevelRaw = pickFirst(req.body, ['gasLevel', 'gas', 'Gas', 'gas_level', 'gasLevel']);
+    const accelXRaw = pickFirst(req.body, ['accelX', 'accel_x', 'ax', 'accelerationX']);
+    const accelYRaw = pickFirst(req.body, ['accelY', 'accel_y', 'ay', 'accelerationY']);
+    const accelZRaw = pickFirst(req.body, ['accelZ', 'accel_z', 'az', 'accelerationZ']);
+    const fallDetectedRaw = pickFirst(req.body, ['fallDetected', 'fall', 'fall_detected', 'isFallen']);
+    const mpuStatusRaw = pickFirst(req.body, ['mpuStatus', 'mpu_status', 'mpu', 'status']);
+    const timestampRaw = pickFirst(req.body, ['timestamp', 'time', 'Time', 'date']);
+
+    // تحويل القيم إلى أرقام بشكل آمن
+    const workerId = workerIdRaw ? String(workerIdRaw) : null;
+    const temperature = toNumber(temperatureRaw);
+    const humidity = toNumber(humidityRaw);
+    const gasLevel = toNumber(gasLevelRaw);
+    const accelX = toNumber(accelXRaw);
+    const accelY = toNumber(accelYRaw);
+    const accelZ = toNumber(accelZRaw);
+    const fallDetected = fallDetectedRaw === true || fallDetectedRaw === 'true' || fallDetectedRaw === 1 || fallDetectedRaw === '1';
+    const mpuStatus = mpuStatusRaw ? String(mpuStatusRaw) : 'unknown';
+    const timestamp = timestampRaw ? new Date(timestampRaw).toISOString() : new Date().toISOString();
 
     if (!workerId) {
         return res.status(400).json({ error: 'workerId مطلوب' });
@@ -111,18 +140,18 @@ app.post('/api/sensor-data', (req, res) => {
         phone: workerInfo.phone || null,
         emergencyPhone: workerInfo.emergencyPhone || null,
         address: workerInfo.address || null,
-        // بيانات المستشعرات (من الخوذة)
-        temperature: temperature || null,
-        humidity: humidity || null,
-        gasLevel: gasLevel || null,
-        accelX: accelX || null,
-        accelY: accelY || null,
-        accelZ: accelZ || null,
-        fallDetected: fallDetected || false,
-        mpuStatus: mpuStatus || 'unknown',
+        // بيانات المستشعرات (من الخوذة) - استخدام القيم المحولة
+        temperature: temperature > 0 ? temperature : null,
+        humidity: humidity > 0 ? humidity : null,
+        gasLevel: gasLevel > 0 ? gasLevel : null,
+        accelX: accelX !== 0 ? accelX : null,
+        accelY: accelY !== 0 ? accelY : null,
+        accelZ: accelZ !== 0 ? accelZ : null,
+        fallDetected: fallDetected,
+        mpuStatus: mpuStatus,
         // حالة الاتصال
         helmetConnected: true,
-        helmetLastUpdate: timestamp || new Date().toISOString(),
+        helmetLastUpdate: timestamp,
         // الموقع (من الهاتف)
         latitude: workerData.latitude || null,
         longitude: workerData.longitude || null,
@@ -166,6 +195,19 @@ app.post('/api/sensor-data', (req, res) => {
 
     // إرسال البيانات إلى لوحة التحكم
     io.to('dashboard').emit('sensor-update', workerData);
+
+    // Logging (مشابه لـ health-monitor-app)
+    console.log('========================================');
+    console.log('📡 Received sensor data from ESP32');
+    console.log('Raw body:', req.body);
+    console.log('Processed data:', {
+        workerId,
+        temperature,
+        humidity,
+        gasLevel,
+        fallDetected
+    });
+    console.log('========================================');
 
     res.json({
         success: true,
@@ -450,7 +492,10 @@ function getLocalIPAddresses() {
 // Server Start
 // ========================================
 
-server.listen(PORT, () => {
+// تشغيل السيرفر محلياً فقط (ليس في Vercel)
+// في Vercel، سيتم استخدام module.exports فقط
+if (require.main === module) {
+    server.listen(PORT, () => {
     console.log('\n========================================');
     console.log('  نظام الخوذة الذكية - الخادم');
     console.log('========================================');
@@ -480,4 +525,11 @@ server.listen(PORT, () => {
     }
 
     console.log('========================================\n');
-});
+    });
+}
+
+// ========================================
+// Export for Vercel (serverless functions)
+// ========================================
+// تصدير التطبيق لاستخدامه في Vercel
+module.exports = app;

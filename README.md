@@ -49,9 +49,32 @@ npm run dev
 http://localhost:3000
 ```
 
+## النشر على Vercel
+
+تم إضافة دعم كامل للنشر على Vercel:
+
+1. تثبيت Vercel CLI (اختياري):
+```bash
+npm i -g vercel
+```
+
+2. النشر:
+```bash
+vercel
+```
+
+أو ربط المشروع مع GitHub و Vercel من خلال الواجهة.
+
+### ملاحظات مهمة:
+- تم تحسين معالجة البيانات الواردة من ESP32 لتدعم أسماء حقول متعددة
+- النظام يستخدم دوال `toNumber` و `pickFirst` لتحسين استقبال البيانات
+- Socket.IO قد يحتاج إلى إعداد خاص في Vercel للعمل بشكل كامل
+
 ## استخدام API
 
 ### إرسال بيانات من ESP32:
+
+النظام يدعم الآن أسماء حقول متعددة لمرونة أكبر:
 
 ```http
 POST http://localhost:3000/api/sensor-data
@@ -62,12 +85,26 @@ Content-Type: application/json
   "temperature": 35.5,
   "humidity": 60.2,
   "gasLevel": 150,
-  "latitude": 24.7136,
-  "longitude": 46.6753,
+  "accelX": 0.5,
+  "accelY": 0.3,
+  "accelZ": 9.8,
   "fallDetected": false,
+  "mpuStatus": "ok",
   "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
+
+**الحقول المدعومة (مرنة):**
+- `workerId` أو `worker_id` أو `id` أو `ID`
+- `temperature` أو `temp` أو `Temp` أو `bodyTemperature` أو `bodyTemp`
+- `humidity` أو `humid` أو `Humidity` أو `hum`
+- `gasLevel` أو `gas` أو `Gas` أو `gas_level`
+- `accelX` أو `accel_x` أو `ax` أو `accelerationX`
+- `accelY` أو `accel_y` أو `ay` أو `accelerationY`
+- `accelZ` أو `accel_z` أو `az` أو `accelerationZ`
+- `fallDetected` أو `fall` أو `fall_detected` أو `isFallen`
+- `mpuStatus` أو `mpu_status` أو `mpu` أو `status`
+- `timestamp` أو `time` أو `Time` أو `date`
 
 ### الحصول على بيانات جميع العاملين:
 
@@ -152,11 +189,27 @@ void loop() {
 - موقع العامل مع رابط لخرائط Google
 - التنبيهات الفورية
 
+## التحسينات الجديدة
+
+### من تطبيق health-monitor-app:
+- ✅ إضافة دوال `toNumber` و `pickFirst` لتحسين معالجة البيانات
+- ✅ دعم أسماء حقول متعددة من ESP32 (مرونة أكبر)
+- ✅ تحسين معالجة القيم الرقمية والتحقق منها
+- ✅ دعم Vercel serverless functions
+- ✅ إضافة ملفات API للنشر على Vercel
+
+### الملفات الجديدة:
+- `api/index.js` - Vercel serverless function wrapper
+- `api/index.html.js` - خدمة HTML للصفحة الرئيسية
+- `api/static.js` - خدمة الملفات الثابتة (CSS, JS)
+- `vercel.json` - إعدادات Vercel
+
 ## ملاحظات
 
 - النظام حالياً لا يستخدم قاعدة بيانات، البيانات تُخزن في الذاكرة
 - عند إعادة تشغيل الخادم، سيتم فقدان البيانات السابقة
 - يمكن إضافة قاعدة بيانات لاحقاً لتخزين البيانات التاريخية
+- Socket.IO قد يحتاج إلى إعداد خاص في Vercel للعمل بشكل كامل مع WebSockets
 
 ## التطوير المستقبلي
 
