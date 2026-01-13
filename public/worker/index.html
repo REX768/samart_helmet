@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <title>الخوذة الذكية - تطبيق العامل</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        :root {
+            --primary: #f59e0b;
+            --primary-dark: #d97706;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1e293b;
+            --darker: #0f172a;
+            --light: #f1f5f9;
+            --gray: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%);
+            min-height: 100vh;
+            color: white;
+            direction: rtl;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--darker);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-icon {
+            font-size: 4rem;
+            color: var(--primary);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: var(--gray);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+        }
+
+        /* Setup Screen */
+        .setup-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--darker);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px;
+            padding-top: 40px;
+            z-index: 9998;
+            overflow-y: auto;
+        }
+
+        .setup-screen.hidden {
+            display: none;
+        }
+
+        .setup-card {
+            background: var(--dark);
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            margin-bottom: 40px;
+            flex-shrink: 0;
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .setup-header i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .setup-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .setup-header p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--light);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            background: var(--darker);
+            color: white;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-group input::placeholder {
+            color: var(--gray);
+        }
+
+        .btn-start {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border: none;
+            border-radius: 12px;
+            color: var(--darker);
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-start:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Main App */
+        .app-container {
+            display: none;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 20px;
+            padding-bottom: 100px;
+            overflow-y: auto;
+        }
+
+        .app-container.active {
+            display: flex;
+        }
+
+        /* Header */
+        .app-header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #334155;
+            margin-bottom: 20px;
+        }
+
+        .worker-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .worker-avatar {
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .worker-details h2 {
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+
+        .worker-details p {
+            color: var(--gray);
+            font-size: 0.85rem;
+        }
+
+        /* Status Cards */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-card {
+            background: var(--dark);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #334155;
+            transition: border-color 0.3s;
+        }
+
+        .status-card.success {
+            border-color: var(--success);
+        }
+
+        .status-card.warning {
+            border-color: var(--warning);
+        }
+
+        .status-card.danger {
+            border-color: var(--danger);
+        }
+
+        .status-card i {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .status-card.success i { color: var(--success); }
+        .status-card.warning i { color: var(--warning); }
+        .status-card.danger i { color: var(--danger); }
+
+        .status-card h3 {
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .status-card p {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        /* Location Display */
+        .location-card {
+            background: var(--dark);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #334155;
+        }
+
+        .location-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .location-header i {
+            color: var(--danger);
+            font-size: 1.2rem;
+        }
+
+        .location-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .location-coords {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .coord-item {
+            background: var(--darker);
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .coord-item label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-bottom: 4px;
+        }
+
+        .coord-item span {
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Activity Log */
+        .activity-card {
+            background: var(--dark);
+            border-radius: 16px;
+            padding: 20px;
+            border: 2px solid #334155;
+            flex: 1;
+        }
+
+        .activity-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .activity-header h3 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+        }
+
+        .activity-header h3 i {
+            color: var(--primary);
+        }
+
+        .activity-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #334155;
+            font-size: 0.85rem;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-item i {
+            width: 24px;
+            text-align: center;
+        }
+
+        .activity-item.success i { color: var(--success); }
+        .activity-item.warning i { color: var(--warning); }
+        .activity-item.danger i { color: var(--danger); }
+        .activity-item.info i { color: #3b82f6; }
+
+        .activity-time {
+            margin-right: auto;
+            color: var(--gray);
+            font-size: 0.75rem;
+        }
+
+        /* Bottom Status Bar */
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--dark);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid #334155;
+            z-index: 100;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--gray);
+            animation: blink 2s infinite;
+        }
+
+        .status-dot.connected { background: var(--success); }
+        .status-dot.disconnected { background: var(--danger); }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .btn-stop {
+            padding: 10px 20px;
+            background: var(--danger);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Permission Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 10000;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: var(--dark);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            max-width: 350px;
+        }
+
+        .modal-content i {
+            font-size: 3rem;
+            color: var(--warning);
+            margin-bottom: 20px;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 10px;
+        }
+
+        .modal-content p {
+            color: var(--gray);
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .modal-content button {
+            padding: 12px 30px;
+            background: var(--primary);
+            border: none;
+            border-radius: 10px;
+            color: var(--darker);
+            font-family: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--darker);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray);
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 380px) {
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <i class="fas fa-hard-hat loading-icon"></i>
+        <p class="loading-text">جاري التحميل...</p>
+    </div>
+
+    <!-- Setup Screen -->
+    <div class="setup-screen" id="setupScreen">
+        <div class="setup-card">
+            <div class="setup-header">
+                <i class="fas fa-hard-hat"></i>
+                <h1>الخوذة الذكية</h1>
+                <p>أدخل بياناتك لبدء البث المباشر</p>
+            </div>
+
+            <form id="setupForm">
+                <div class="form-group">
+                    <label><i class="fas fa-id-badge"></i> رقم الخوذة</label>
+                    <input type="text" id="helmetId" placeholder="مثال: 001" required maxlength="10">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> اسم العامل</label>
+                    <input type="text" id="workerName" placeholder="الاسم الكامل" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-phone"></i> رقم الهاتف</label>
+                    <input type="tel" id="workerPhone" placeholder="05xxxxxxxx" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-phone-alt"></i> رقم الطوارئ (قريب)</label>
+                    <input type="tel" id="emergencyPhone" placeholder="05xxxxxxxx" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-map-marker-alt"></i> عنوان السكن</label>
+                    <input type="text" id="workerAddress" placeholder="المدينة - الحي">
+                </div>
+
+                <button type="submit" class="btn-start" id="btnStart">
+                    <i class="fas fa-broadcast-tower"></i>
+                    بدء البث المباشر
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="appContainer">
+        <header class="app-header">
+            <div class="worker-info">
+                <div class="worker-avatar">
+                    <i class="fas fa-user-hard-hat"></i>
+                </div>
+                <div class="worker-details">
+                    <h2 id="displayName">--</h2>
+                    <p>خوذة رقم: <span id="displayHelmetId">--</span></p>
+                </div>
+            </div>
+        </header>
+
+        <div class="status-grid">
+            <div class="status-card" id="connectionCard">
+                <i class="fas fa-wifi"></i>
+                <h3>حالة الاتصال</h3>
+                <p id="connectionStatusText">جاري الاتصال...</p>
+            </div>
+
+            <div class="status-card" id="gpsCard">
+                <i class="fas fa-satellite"></i>
+                <h3>دقة GPS</h3>
+                <p id="gpsAccuracy">--</p>
+            </div>
+
+            <div class="status-card" id="lastSendCard">
+                <i class="fas fa-clock"></i>
+                <h3>آخر إرسال</h3>
+                <p id="lastSendTime">--</p>
+            </div>
+
+            <div class="status-card" id="updatesCard">
+                <i class="fas fa-sync-alt"></i>
+                <h3>عدد التحديثات</h3>
+                <p id="updateCount">0</p>
+            </div>
+        </div>
+
+        <div class="location-card">
+            <div class="location-header">
+                <i class="fas fa-map-marker-alt"></i>
+                <h3>الموقع الحالي</h3>
+            </div>
+            <div class="location-coords">
+                <div class="coord-item">
+                    <label>خط العرض</label>
+                    <span id="latitude">--</span>
+                </div>
+                <div class="coord-item">
+                    <label>خط الطول</label>
+                    <span id="longitude">--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="activity-card">
+            <div class="activity-header">
+                <h3><i class="fas fa-list"></i> سجل النشاط</h3>
+            </div>
+            <div class="activity-list" id="activityList">
+                <!-- Activity items will be added here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="bottom-bar" id="bottomBar" style="display: none;">
+        <div class="connection-status">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="bottomStatusText">غير متصل</span>
+        </div>
+        <button class="btn-stop" id="btnStop">
+            <i class="fas fa-stop"></i> إيقاف
+        </button>
+    </div>
+
+    <!-- Permission Modal -->
+    <div class="modal-overlay hidden" id="permissionModal">
+        <div class="modal-content">
+            <i class="fas fa-location-arrow"></i>
+            <h3>مطلوب إذن الموقع</h3>
+            <p>يحتاج التطبيق للوصول إلى موقعك لإرسال بيانات الموقع للمشرف</p>
+            <button id="btnRequestPermission">السماح بالوصول</button>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal-overlay hidden" id="errorModal">
+        <div class="modal-content">
+            <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i>
+            <h3 id="errorTitle">خطأ</h3>
+            <p id="errorMessage">حدث خطأ غير متوقع</p>
+            <button id="btnRetry">إعادة المحاولة</button>
+        </div>
+    </div>
+
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+        // ========================================
+        // Worker Location Tracking App
+        // ========================================
+
+        // Configuration
+        const CONFIG = {
+            MIN_DISTANCE: 5,           // Minimum distance (meters) to trigger update
+            MAX_INTERVAL: 30000,       // Maximum time between updates (30 seconds)
+            HEARTBEAT_INTERVAL: 15000, // Heartbeat every 15 seconds
+            HIGH_ACCURACY: true,
+            MAX_AGE: 10000,
+            TIMEOUT: 10000
+        };
+
+        // State
+        let state = {
+            socket: null,
+            watchId: null,
+            workerData: null,
+            lastPosition: null,
+            lastSendTime: null,
+            updateCount: 0,
+            isConnected: false,
+            heartbeatTimer: null
+        };
+
+        // DOM Elements
+        const elements = {
+            loadingScreen: document.getElementById('loadingScreen'),
+            setupScreen: document.getElementById('setupScreen'),
+            appContainer: document.getElementById('appContainer'),
+            bottomBar: document.getElementById('bottomBar'),
+            setupForm: document.getElementById('setupForm'),
+            permissionModal: document.getElementById('permissionModal'),
+            errorModal: document.getElementById('errorModal'),
+
+            // Form inputs
+            helmetId: document.getElementById('helmetId'),
+            workerName: document.getElementById('workerName'),
+            workerPhone: document.getElementById('workerPhone'),
+            emergencyPhone: document.getElementById('emergencyPhone'),
+            workerAddress: document.getElementById('workerAddress'),
+
+            // Display elements
+            displayName: document.getElementById('displayName'),
+            displayHelmetId: document.getElementById('displayHelmetId'),
+            connectionStatusText: document.getElementById('connectionStatusText'),
+            gpsAccuracy: document.getElementById('gpsAccuracy'),
+            lastSendTime: document.getElementById('lastSendTime'),
+            updateCount: document.getElementById('updateCount'),
+            latitude: document.getElementById('latitude'),
+            longitude: document.getElementById('longitude'),
+            activityList: document.getElementById('activityList'),
+            statusDot: document.getElementById('statusDot'),
+            bottomStatusText: document.getElementById('bottomStatusText'),
+
+            // Cards
+            connectionCard: document.getElementById('connectionCard'),
+            gpsCard: document.getElementById('gpsCard'),
+            lastSendCard: document.getElementById('lastSendCard'),
+
+            // Buttons
+            btnStart: document.getElementById('btnStart'),
+            btnStop: document.getElementById('btnStop'),
+            btnRequestPermission: document.getElementById('btnRequestPermission'),
+            btnRetry: document.getElementById('btnRetry')
+        };
+
+        // ========================================
+        // Initialization
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Hide loading screen after a moment
+            setTimeout(() => {
+                elements.loadingScreen.classList.add('hidden');
+                checkSavedData();
+            }, 1000);
+
+            // Event listeners
+            elements.setupForm.addEventListener('submit', handleFormSubmit);
+            elements.btnStop.addEventListener('click', stopTracking);
+            elements.btnRequestPermission.addEventListener('click', requestLocationPermission);
+            elements.btnRetry.addEventListener('click', () => {
+                elements.errorModal.classList.add('hidden');
+                startTracking();
+            });
+        });
+
+        // ========================================
+        // Check for saved data
+        // ========================================
+        function checkSavedData() {
+            const savedData = localStorage.getItem('workerData');
+            if (savedData) {
+                state.workerData = JSON.parse(savedData);
+                // Pre-fill form
+                elements.helmetId.value = state.workerData.helmetId || '';
+                elements.workerName.value = state.workerData.name || '';
+                elements.workerPhone.value = state.workerData.phone || '';
+                elements.emergencyPhone.value = state.workerData.emergencyPhone || '';
+                elements.workerAddress.value = state.workerData.address || '';
+            }
+        }
+
+        // ========================================
+        // Form Submit Handler
+        // ========================================
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            // Collect worker data
+            state.workerData = {
+                helmetId: elements.helmetId.value.trim(),
+                name: elements.workerName.value.trim(),
+                phone: elements.workerPhone.value.trim(),
+                emergencyPhone: elements.emergencyPhone.value.trim(),
+                address: elements.workerAddress.value.trim()
+            };
+
+            // Save to localStorage
+            localStorage.setItem('workerData', JSON.stringify(state.workerData));
+
+            // Start tracking
+            startTracking();
+        }
+
+        // ========================================
+        // Start Location Tracking
+        // ========================================
+        async function startTracking() {
+            // Check for geolocation support
+            if (!navigator.geolocation) {
+                showError('المتصفح غير مدعوم', 'متصفحك لا يدعم خدمة تحديد الموقع');
+                return;
+            }
+
+            // Check permission
+            try {
+                const permission = await navigator.permissions.query({ name: 'geolocation' });
+
+                if (permission.state === 'denied') {
+                    showError('تم رفض الإذن', 'يرجى السماح بالوصول للموقع من إعدادات المتصفح');
+                    return;
+                }
+
+                if (permission.state === 'prompt') {
+                    elements.permissionModal.classList.remove('hidden');
+                    return;
+                }
+
+                // Permission granted
+                initializeApp();
+
+            } catch (error) {
+                // Fallback for browsers without Permissions API
+                requestLocationPermission();
+            }
+        }
+
+        // ========================================
+        // Request Location Permission
+        // ========================================
+        function requestLocationPermission() {
+            elements.permissionModal.classList.add('hidden');
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // Permission granted
+                    initializeApp();
+                },
+                (error) => {
+                    handleGeolocationError(error);
+                },
+                {
+                    enableHighAccuracy: CONFIG.HIGH_ACCURACY,
+                    timeout: CONFIG.TIMEOUT,
+                    maximumAge: CONFIG.MAX_AGE
+                }
+            );
+        }
+
+        // ========================================
+        // Initialize App
+        // ========================================
+        function initializeApp() {
+            // Switch to app view
+            elements.setupScreen.classList.add('hidden');
+            elements.appContainer.classList.add('active');
+            elements.bottomBar.style.display = 'flex';
+
+            // Display worker info
+            elements.displayName.textContent = state.workerData.name;
+            elements.displayHelmetId.textContent = state.workerData.helmetId;
+
+            // Connect to server
+            connectToServer();
+
+            // Start watching position
+            startWatchingPosition();
+
+            // Add activity
+            addActivity('success', 'fa-check-circle', 'تم بدء البث المباشر');
+        }
+
+        // ========================================
+        // Connect to Server
+        // ========================================
+        function connectToServer() {
+            state.socket = io({
+                query: {
+                    type: 'worker',
+                    workerId: state.workerData.helmetId
+                }
+            });
+
+            state.socket.on('connect', () => {
+                state.isConnected = true;
+                updateConnectionStatus(true);
+                addActivity('success', 'fa-plug', 'تم الاتصال بالسيرفر');
+
+                // Send worker registration
+                state.socket.emit('worker-register', {
+                    workerId: state.workerData.helmetId,
+                    name: state.workerData.name,
+                    phone: state.workerData.phone,
+                    emergencyPhone: state.workerData.emergencyPhone,
+                    address: state.workerData.address
+                });
+
+                // Start heartbeat
+                startHeartbeat();
+            });
+
+            state.socket.on('disconnect', () => {
+                state.isConnected = false;
+                updateConnectionStatus(false);
+                addActivity('danger', 'fa-plug', 'انقطع الاتصال بالسيرفر');
+                stopHeartbeat();
+            });
+
+            state.socket.on('connect_error', () => {
+                state.isConnected = false;
+                updateConnectionStatus(false);
+                addActivity('danger', 'fa-exclamation-circle', 'خطأ في الاتصال');
+            });
+
+            // Confirmation from server
+            state.socket.on('location-received', () => {
+                addActivity('info', 'fa-check', 'تم استلام الموقع');
+            });
+        }
+
+        // ========================================
+        // Start Watching Position
+        // ========================================
+        function startWatchingPosition() {
+            state.watchId = navigator.geolocation.watchPosition(
+                handlePositionUpdate,
+                handleGeolocationError,
+                {
+                    enableHighAccuracy: CONFIG.HIGH_ACCURACY,
+                    timeout: CONFIG.TIMEOUT,
+                    maximumAge: CONFIG.MAX_AGE
+                }
+            );
+        }
+
+        // ========================================
+        // Handle Position Update
+        // ========================================
+        function handlePositionUpdate(position) {
+            const { latitude, longitude, accuracy } = position.coords;
+            const timestamp = position.timestamp;
+
+            // Update GPS display
+            elements.latitude.textContent = latitude.toFixed(6);
+            elements.longitude.textContent = longitude.toFixed(6);
+            updateGPSAccuracy(accuracy);
+
+            // Check if we should send update
+            const shouldSend = shouldSendUpdate(latitude, longitude, timestamp);
+
+            if (shouldSend) {
+                sendLocationUpdate(latitude, longitude, accuracy, timestamp);
+            }
+
+            // Store last position
+            state.lastPosition = { latitude, longitude, timestamp };
+        }
+
+        // ========================================
+        // Check if Should Send Update
+        // ========================================
+        function shouldSendUpdate(lat, lng, timestamp) {
+            // Always send first update
+            if (!state.lastPosition || !state.lastSendTime) {
+                return true;
+            }
+
+            // Check time elapsed
+            const timeElapsed = timestamp - state.lastSendTime;
+            if (timeElapsed >= CONFIG.MAX_INTERVAL) {
+                return true;
+            }
+
+            // Check distance moved
+            const distance = calculateDistance(
+                state.lastPosition.latitude,
+                state.lastPosition.longitude,
+                lat,
+                lng
+            );
+
+            return distance >= CONFIG.MIN_DISTANCE;
+        }
+
+        // ========================================
+        // Calculate Distance (Haversine formula)
+        // ========================================
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth's radius in meters
+            const phi1 = lat1 * Math.PI / 180;
+            const phi2 = lat2 * Math.PI / 180;
+            const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+            const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                      Math.cos(phi1) * Math.cos(phi2) *
+                      Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // Distance in meters
+        }
+
+        // ========================================
+        // Send Location Update
+        // ========================================
+        function sendLocationUpdate(lat, lng, accuracy, timestamp) {
+            if (!state.isConnected) {
+                addActivity('warning', 'fa-exclamation-triangle', 'فشل الإرسال - غير متصل');
+                return;
+            }
+
+            const locationData = {
+                workerId: state.workerData.helmetId,
+                latitude: lat,
+                longitude: lng,
+                accuracy: accuracy,
+                timestamp: timestamp,
+                source: 'phone-gps'
+            };
+
+            state.socket.emit('worker-location', locationData);
+
+            // Update state
+            state.lastSendTime = timestamp;
+            state.updateCount++;
+
+            // Update UI
+            elements.updateCount.textContent = state.updateCount;
+            updateLastSendTime();
+
+            addActivity('success', 'fa-location-arrow', 'تم إرسال الموقع');
+        }
+
+        // ========================================
+        // Heartbeat
+        // ========================================
+        function startHeartbeat() {
+            state.heartbeatTimer = setInterval(() => {
+                if (state.isConnected) {
+                    state.socket.emit('worker-heartbeat', {
+                        workerId: state.workerData.helmetId,
+                        timestamp: Date.now()
+                    });
+                }
+            }, CONFIG.HEARTBEAT_INTERVAL);
+        }
+
+        function stopHeartbeat() {
+            if (state.heartbeatTimer) {
+                clearInterval(state.heartbeatTimer);
+                state.heartbeatTimer = null;
+            }
+        }
+
+        // ========================================
+        // UI Update Functions
+        // ========================================
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                elements.connectionCard.classList.remove('danger', 'warning');
+                elements.connectionCard.classList.add('success');
+                elements.connectionStatusText.textContent = 'متصل';
+                elements.statusDot.classList.add('connected');
+                elements.statusDot.classList.remove('disconnected');
+                elements.bottomStatusText.textContent = 'متصل بالسيرفر';
+            } else {
+                elements.connectionCard.classList.remove('success', 'warning');
+                elements.connectionCard.classList.add('danger');
+                elements.connectionStatusText.textContent = 'غير متصل';
+                elements.statusDot.classList.remove('connected');
+                elements.statusDot.classList.add('disconnected');
+                elements.bottomStatusText.textContent = 'غير متصل';
+            }
+        }
+
+        function updateGPSAccuracy(accuracy) {
+            let statusClass = 'success';
+            let statusText = '';
+
+            if (accuracy <= 10) {
+                statusText = `ممتاز (${accuracy.toFixed(0)}م)`;
+                statusClass = 'success';
+            } else if (accuracy <= 30) {
+                statusText = `جيد (${accuracy.toFixed(0)}م)`;
+                statusClass = 'success';
+            } else if (accuracy <= 100) {
+                statusText = `متوسط (${accuracy.toFixed(0)}م)`;
+                statusClass = 'warning';
+            } else {
+                statusText = `ضعيف (${accuracy.toFixed(0)}م)`;
+                statusClass = 'danger';
+            }
+
+            elements.gpsAccuracy.textContent = statusText;
+            elements.gpsCard.classList.remove('success', 'warning', 'danger');
+            elements.gpsCard.classList.add(statusClass);
+        }
+
+        function updateLastSendTime() {
+            const now = new Date();
+            elements.lastSendTime.textContent = now.toLocaleTimeString('ar-SA');
+            elements.lastSendCard.classList.remove('danger', 'warning');
+            elements.lastSendCard.classList.add('success');
+        }
+
+        function addActivity(type, icon, message) {
+            const time = new Date().toLocaleTimeString('ar-SA', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const item = document.createElement('div');
+            item.className = `activity-item ${type}`;
+            item.innerHTML = `
+                <i class="fas ${icon}"></i>
+                <span>${message}</span>
+                <span class="activity-time">${time}</span>
+            `;
+
+            elements.activityList.insertBefore(item, elements.activityList.firstChild);
+
+            // Keep only last 20 items
+            while (elements.activityList.children.length > 20) {
+                elements.activityList.removeChild(elements.activityList.lastChild);
+            }
+        }
+
+        // ========================================
+        // Error Handling
+        // ========================================
+        function handleGeolocationError(error) {
+            let message = '';
+
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    message = 'تم رفض إذن الوصول للموقع';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = 'الموقع غير متاح حالياً';
+                    break;
+                case error.TIMEOUT:
+                    message = 'انتهت مهلة تحديد الموقع';
+                    break;
+                default:
+                    message = 'خطأ غير معروف في تحديد الموقع';
+            }
+
+            addActivity('danger', 'fa-exclamation-triangle', message);
+            showError('خطأ في GPS', message);
+        }
+
+        function showError(title, message) {
+            document.getElementById('errorTitle').textContent = title;
+            document.getElementById('errorMessage').textContent = message;
+            elements.errorModal.classList.remove('hidden');
+        }
+
+        // ========================================
+        // Stop Tracking
+        // ========================================
+        function stopTracking() {
+            if (confirm('هل تريد إيقاف البث المباشر؟')) {
+                // Stop watching position
+                if (state.watchId) {
+                    navigator.geolocation.clearWatch(state.watchId);
+                    state.watchId = null;
+                }
+
+                // Stop heartbeat
+                stopHeartbeat();
+
+                // Disconnect socket
+                if (state.socket) {
+                    state.socket.emit('worker-disconnect', {
+                        workerId: state.workerData.helmetId
+                    });
+                    state.socket.disconnect();
+                    state.socket = null;
+                }
+
+                // Reset state
+                state.isConnected = false;
+                state.updateCount = 0;
+
+                // Show setup screen
+                elements.appContainer.classList.remove('active');
+                elements.bottomBar.style.display = 'none';
+                elements.setupScreen.classList.remove('hidden');
+
+                addActivity('warning', 'fa-stop-circle', 'تم إيقاف البث');
+            }
+        }
+
+        // ========================================
+        // Keep Screen Awake (if supported)
+        // ========================================
+        async function keepScreenAwake() {
+            if ('wakeLock' in navigator) {
+                try {
+                    await navigator.wakeLock.request('screen');
+                    console.log('Screen wake lock acquired');
+                } catch (err) {
+                    console.log('Wake lock error:', err);
+                }
+            }
+        }
+
+        // Request wake lock when app starts
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && state.isConnected) {
+                keepScreenAwake();
+            }
+        });
+    </script>
+</body>
+</html>

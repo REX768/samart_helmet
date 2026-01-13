@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Helmet - نظام الخوذة الذكية</title>
+
+    <!-- Google Fonts - Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-hard-hat"></i>
+                <span>Smart Helmet</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active">
+                <i class="fas fa-th-large"></i>
+                <span>لوحة التحكم</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-users"></i>
+                <span>العاملين</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>التقارير</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-bell"></i>
+                <span>التنبيهات</span>
+                <span class="badge" id="alertsBadge">0</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>الخريطة</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>الإعدادات</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="connection-status" id="connectionIndicator">
+                <span class="status-dot"></span>
+                <span id="connectionText">جاري الاتصال...</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-right">
+                <button class="menu-btn" id="menuBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="page-title">
+                    <h1>لوحة المراقبة</h1>
+                    <p>مراقبة لحظية لسلامة العاملين</p>
+                </div>
+            </div>
+            <div class="header-left">
+                <div class="header-time">
+                    <i class="far fa-clock"></i>
+                    <span id="currentTime">--:--:--</span>
+                </div>
+                <button class="notification-btn" id="notificationBtn">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notificationBadge">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Overview -->
+        <section class="stats-section">
+            <div class="stat-card">
+                <div class="stat-icon workers">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="totalWorkers">0</h3>
+                    <p>إجمالي العاملين</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon active">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="activeWorkers">0</h3>
+                    <p>عاملين نشطين</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon alerts">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="totalAlerts">0</h3>
+                    <p>تنبيهات نشطة</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon emergency">
+                    <i class="fas fa-ambulance"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="emergencyCount">0</h3>
+                    <p>حالات طوارئ</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Workers Section -->
+        <section class="workers-section">
+            <div class="section-header">
+                <h2><i class="fas fa-hard-hat"></i> حالة العاملين</h2>
+                <div class="section-actions">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="بحث عن عامل..." id="searchWorker">
+                    </div>
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="grid" id="gridViewBtn">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+                        <button class="view-btn" data-view="list" id="listViewBtn">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="workersContainer" class="workers-grid">
+                <!-- Worker cards will be added dynamically -->
+            </div>
+
+            <div id="noWorkers" class="no-data">
+                <div class="no-data-icon">
+                    <i class="fas fa-hard-hat"></i>
+                </div>
+                <h3>لا توجد بيانات</h3>
+                <p>في انتظار اتصال أجهزة الخوذة الذكية...</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Alert Modal -->
+    <div class="modal" id="alertModal">
+        <div class="modal-content">
+            <div class="modal-header emergency">
+                <i class="fas fa-exclamation-circle"></i>
+                <h3>تنبيه طوارئ!</h3>
+            </div>
+            <div class="modal-body" id="alertModalBody">
+                <!-- Alert content -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="dismissAlert">تجاهل</button>
+                <button class="btn btn-primary" id="viewWorker">عرض التفاصيل</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
